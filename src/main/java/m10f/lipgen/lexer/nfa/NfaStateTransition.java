@@ -1,10 +1,45 @@
 package m10f.lipgen.lexer.nfa;
-import m10f.lipgen.lexer.LexerStream;
 
+public class NfaStateTransition {
+    private boolean greedy;
+    private NfaState targetState;
+    private CharacterAcceptor acceptor;
 
-public interface NfaStateTransition {
-    public NfaState getTargetState();
-    public boolean isLambda();
-    public NfaStateTransition copy(NfaState newTarget);
-    public boolean accept(LexerStream stream);
+    public NfaStateTransition(CharacterAcceptor acceptor, NfaState targetState) {
+        this(acceptor, targetState, true);
+    }
+
+    public NfaStateTransition(CharacterAcceptor acceptor, NfaState targetState, boolean greedy) {
+        this.targetState = targetState;
+        this.acceptor = acceptor;
+        this.greedy = greedy;
+    }
+
+    public NfaStateTransition copy(NfaState newState) {
+        return new NfaStateTransition(acceptor, newState, greedy);
+    }
+
+    public NfaState getTargetState() {
+        return targetState;
+    }
+
+    public void setTargetState(NfaState targetState) {
+        this.targetState = targetState;
+    }
+
+    public CharacterAcceptor getAcceptor() {
+        return acceptor;
+    }
+
+    public void setAcceptor(CharacterAcceptor acceptor) {
+        this.acceptor = acceptor;
+    }
+
+    public void setGreed(boolean greed) {
+        greedy = greed;
+    }
+
+    public boolean isGreedy() {
+        return greedy;
+    }
 }

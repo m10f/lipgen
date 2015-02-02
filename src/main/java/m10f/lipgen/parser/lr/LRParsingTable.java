@@ -1,6 +1,6 @@
 package m10f.lipgen.parser.lr;
 
-import m10f.lipgen.parser.Symbol;
+import m10f.lipgen.grammar.symbol.Symbol;
 
 import java.util.HashMap;
 import java.util.Map;

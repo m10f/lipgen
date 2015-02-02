@@ -30,7 +30,11 @@ public class Nfa {
     }
 
     public Nfa(char c) {
-        this(f -> new LiteralTransition(f, c));
+        this(f -> new NfaStateTransition(new CharacterAcceptor.Literal(c), f));
+    }
+
+    public static Nfa matchAny() {
+        return new Nfa(f -> new NfaStateTransition(new CharacterAcceptor.Any(), f));
     }
 
     public static Nfa fromString(String literal) {
@@ -57,9 +61,13 @@ public class Nfa {
         }
 
         for(NfaState sourceState : states) {
+            NfaState targetState = copyMap.get(sourceState);
             for(NfaStateTransition transition : sourceState.getTransitions()) {
-                NfaState targetState = copyMap.get(sourceState);
                 targetState.addTransition(transition.copy(copyMap.get(transition.getTargetState())));
+            }
+
+            for(NfaState lambda : sourceState.getLambdaTransitions()) {
+                targetState.addLambdaTransition(copyMap.get(lambda));
             }
         }
 
@@ -75,8 +83,10 @@ public class Nfa {
 
         states.addAll(otherCopy.states);
         states.remove(otherCopy.startState);
-        for(NfaState finalState : finalStates)
+        for(NfaState finalState : finalStates) {
             finalState.addTransitions(otherCopy.startState.getTransitions());
+            finalState.addLambdaTransitions(otherCopy.startState.getLambdaTransitions());
+        }
 
         finalStates = otherCopy.finalStates;
         return this;
@@ -88,14 +98,14 @@ public class Nfa {
         NfaState newStartState = new NfaState();
         NfaState newFinalState = new NfaState();
 
-        newStartState.addTransition(new LambdaTransition(startState));
-        newStartState.addTransition(new LambdaTransition(otherCopy.startState));
+        newStartState.addLambdaTransition(startState);
+        newStartState.addLambdaTransition(otherCopy.startState);
 
         for(NfaState finalState : finalStates)
-            finalState.addTransition(new LambdaTransition(newFinalState));
+            finalState.addLambdaTransition(newFinalState);
 
         for(NfaState finalState : otherCopy.finalStates)
-            finalState.addTransition(new LambdaTransition(newFinalState));
+            finalState.addLambdaTransition(newFinalState);
 
         states.addAll(otherCopy.states);
         states.add(newFinalState);
@@ -112,12 +122,12 @@ public class Nfa {
         NfaState newStartState = new NfaState();
         NfaState newFinalState = new NfaState();
 
-        newStartState.addTransition(new LambdaTransition(newFinalState));
-        newStartState.addTransition(new LambdaTransition(startState));
+        newStartState.addLambdaTransition(newFinalState);
+        newStartState.addLambdaTransition(startState);
 
         for(NfaState finalState : finalStates) {
-            finalState.addTransition(new LambdaTransition(newFinalState));
-            finalState.addTransition(new LambdaTransition(startState));
+            finalState.addLambdaTransition(newFinalState);
+            finalState.addLambdaTransition(startState);
         }
 
         startState = newStartState;
@@ -129,30 +139,79 @@ public class Nfa {
         return this;
     }
 
-    public boolean accept(LexerStream stream) {
-        return accept(stream, startState);
+    public Nfa withGreed(boolean greed) {
+        for(NfaState state : states) {
+            for(NfaStateTransition transition : state.getTransitions())
+                transition.setGreed(greed);
+        }
+        return this;
     }
 
-    private boolean accept(LexerStream stream, NfaState current) {
-        int initialStreamLocation = stream.position();
-        int lexemeStreamLocation = -1;
-        int lexemeMaxLength = -1;
+    public void removeLambdas() {
+        HashSet<NfaState> transitionStates = new HashSet<>();
+        transitionStates.add(startState);
 
-        for(NfaStateTransition transition : current.getTransitions()) {
-            if(transition.accept(stream) && accept(stream, transition.getTargetState())) {
-                if(lexemeMaxLength < stream.currentLexemeLength()) {
-                    lexemeStreamLocation = stream.position();
-                    lexemeMaxLength = stream.currentLexemeLength();
+        for(NfaState state : states) {
+            Set<NfaState> lambdaClosure = state.getLambdaClosure();
+            for(NfaState closureState : state.getLambdaClosure()) {
+                state.addTransitions(closureState.getTransitions());
+            }
+            if(finalStates.stream().anyMatch(f -> lambdaClosure.contains(finalStates))) {
+                finalStates.add(state);
+            }
+            for(NfaStateTransition transition : state.getTransitions()) {
+                transitionStates.add(transition.getTargetState());
+            }
+        }
+
+        states = transitionStates;
+        for(NfaState state : states)
+            state.clearLambdaTransitions();
+
+        states.add(startState);
+        finalStates.removeIf(s -> !states.contains(s));
+    }
+
+    public boolean accept(LexerStream stream) {
+        Set<NfaState> currentStates = null;
+        Set<NfaState> nextStates = new HashSet<>();
+        nextStates.add(startState);
+        nextStates.addAll(startState.getLambdaClosure());
+
+        int lastRead = stream.position();
+
+        while(!nextStates.isEmpty()) {
+            currentStates = nextStates;
+            nextStates = new HashSet<>();
+
+            lastRead = stream.position();
+            int readResult = stream.readChar();
+            if(readResult == -1) {
+                return containsAnyFinalStates(currentStates);
+            }
+
+            boolean allNonGreedy = true;
+            char currentChar = (char)readResult;
+            for(NfaState state : currentStates) {
+                for(NfaStateTransition transition : state.getTransitions()) {
+                    if(transition.getAcceptor().accept(currentChar)) {
+                        nextStates.add(transition.getTargetState());
+                        nextStates.addAll(transition.getTargetState().getLambdaClosure());
+                        allNonGreedy = allNonGreedy && !transition.isGreedy();
+                    }
                 }
             }
-            stream.position(initialStreamLocation);
+
+            // break out of here if we can only add non-greedy characters to a successful match
+            if(allNonGreedy && containsAnyFinalStates(currentStates))
+                break;
         }
 
-        if(lexemeStreamLocation > 0) {
-            stream.position(lexemeStreamLocation);
-            return true;
-        }
+        stream.position(lastRead);
+        return containsAnyFinalStates(currentStates);
+    }
 
-        return finalStates.contains(current);
+    private boolean containsAnyFinalStates(Set<NfaState> nfaStates) {
+        return finalStates.stream().anyMatch(s -> nfaStates.contains(s));
     }
 }

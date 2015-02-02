@@ -1,10 +1,12 @@
 package m10f.lipgen.lexer;
 
+import m10f.lipgen.grammar.symbol.Terminal;
+
 public class Token {
-    private String symbol;
+    private Terminal symbol;
     private String lexeme;
 
-    public Token(String symbol, String lexeme) {
+    public Token(Terminal symbol, String lexeme) {
         this.symbol = symbol;
         this.lexeme = lexeme;
     }
@@ -13,7 +15,7 @@ public class Token {
         return lexeme;
     }
 
-    public String getSymbol() {
+    public Terminal getSymbol() {
         return symbol;
     }
 }

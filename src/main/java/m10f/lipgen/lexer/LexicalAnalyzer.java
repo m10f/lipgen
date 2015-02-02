@@ -1,5 +1,6 @@
 package m10f.lipgen.lexer;
 
+import m10f.lipgen.grammar.symbol.Terminal;
 import m10f.lipgen.lexer.nfa.Nfa;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,9 +15,10 @@ public class LexicalAnalyzer {
         rules = new ArrayList<>();
     }
 
-    public void addRule(String symbol, Nfa nfa) {
+    public void addRule(Terminal symbol, Nfa nfa) {
         rules.add(new LexerRule(symbol, nfa, false));
     }
+
     public void addSkip(Nfa nfa) { rules.add(new LexerRule(null, nfa, true)); }
 
     public Token getNextToken(LexerStream stream) throws LexicalException {
@@ -55,11 +57,11 @@ public class LexicalAnalyzer {
     }
 
     private class LexerRule {
-        public String symbol;
+        public Terminal symbol;
         public Nfa nfa;
         public boolean skip;
 
-        public LexerRule(String symbol, Nfa nfa, boolean skip) {
+        public LexerRule(Terminal symbol, Nfa nfa, boolean skip) {
             this.symbol = symbol;
             this.nfa = nfa;
             this.skip = skip;

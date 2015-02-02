@@ -1,10 +1,16 @@
 package m10f.lipgen.grammar;
 
+import m10f.lipgen.grammar.symbol.GrammarRule;
+import m10f.lipgen.grammar.symbol.Nonterminal;
+import m10f.lipgen.grammar.symbol.Production;
+import m10f.lipgen.grammar.symbol.Terminal;
 import m10f.lipgen.lexer.LexicalAnalyzer;
-import m10f.lipgen.parser.lr.LRParser;
+import m10f.lipgen.lexer.nfa.Nfa;
+import m10f.lipgen.lexer.nfa.RegexParser;
+import m10f.lipgen.parser.lr.LRParserGenerator;
+import m10f.lipgen.parser.lr.LRParsingTable;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 // TODO: make this the unambigous grammar description?
@@ -12,15 +18,24 @@ public class Grammar {
     private Nonterminal startSymbol;
     private List<Terminal> terminals;
     private List<Nonterminal> nonterminals;
+    private LexicalAnalyzer lexicalAnalyzer;
 
     public Grammar() {
         terminals = new ArrayList<>();
         nonterminals = new ArrayList<>();
+        lexicalAnalyzer = new LexicalAnalyzer();
     }
 
+    // TODO: write regex->nfa conversion
+
     public Terminal terminal(String symbolName, String regex) {
-        Terminal t = new Terminal(symbolName, regex);
+        return terminal(symbolName, RegexParser.current().parseRegex(regex));
+    }
+
+    public Terminal terminal(String symbolName, Nfa nfa) {
+        Terminal t = new Terminal(symbolName);
         terminals.add(t);
+        lexicalAnalyzer.addRule(t, nfa);
         return t;
     }
 
@@ -28,6 +43,20 @@ public class Grammar {
         Nonterminal nt = new Nonterminal(symbolName);
         nonterminals.add(nt);
         return nt;
+    }
+
+    public void skip(Nfa nfa) {
+        lexicalAnalyzer.addSkip(nfa);
+    }
+
+    public List<GrammarRule> getRules() {
+        ArrayList<GrammarRule> rules = new ArrayList<>();
+        for(Nonterminal nonterminal : nonterminals) {
+            for(Production production : nonterminal.getProductions()) {
+                rules.add(new GrammarRule(nonterminal, production));
+            }
+        }
+        return rules;
     }
 
     public Nonterminal getStartSymbol() {
@@ -46,116 +75,13 @@ public class Grammar {
         return nonterminals;
     }
 
-    // TODO: write regex->nfa conversion
-    public LexicalAnalyzer makeLexer() {
-        return null;
+    public LexicalAnalyzer getLexer() {
+        return lexicalAnalyzer;
     }
 
-    public LRParser makeLRParser() {
-        return null;
+    public LRParsingTable getLrParseTable() {
+        LRParserGenerator generator = new LRParserGenerator(this);
+        return generator.generateParsingTable();
     }
 
-    public static interface GrammarSymbol {
-        public String getSymbol();
-        public String getTag();
-    }
-
-    public static class Production {
-        private String tag;
-        private List<GrammarSymbol> production;
-
-        public Production(String tag, List<GrammarSymbol> production) {
-            this.tag = tag;
-            this.production = production;
-        }
-
-        public String getTag() {
-            return tag;
-        }
-
-        public List<GrammarSymbol> getProduction() {
-            return production;
-        }
-    }
-
-    public static class Nonterminal implements GrammarSymbol {
-        private final String symbolName;
-        private List<Production> productions;
-
-        private Nonterminal(String symbolName) {
-            this.symbolName = symbolName;
-            this.productions = new ArrayList<>();
-        }
-
-        @Override
-        public String getSymbol() {
-            return null;
-        }
-
-        @Override
-        public String getTag() {
-            return null;
-        }
-
-        public Tagged<Nonterminal> tag(String tag) {
-            return new Tagged<>(this, tag);
-        }
-
-        public Nonterminal withRule(String ruleTag, GrammarSymbol... symbols) {
-            productions.add(new Production(ruleTag, Arrays.asList(symbols)));
-            return this;
-        }
-    }
-
-    public static class Tagged<T extends GrammarSymbol> implements GrammarSymbol {
-        private final T sub;
-        private final String tag;
-
-        public Tagged(T sub, String tag) {
-            this.sub = sub;
-            this.tag = tag;
-        }
-
-        @Override
-        public String getSymbol() {
-            return sub.getSymbol();
-        }
-
-        @Override
-        public String getTag() {
-            return tag;
-        }
-
-        public T getTarget() {
-            return sub;
-        }
-    }
-
-    public static class Terminal implements GrammarSymbol {
-        private final String symbolName;
-        private final String regex;
-
-        private Terminal(String symbolName, String regex) {
-            this.symbolName = symbolName;
-            this.regex = regex;
-        }
-
-        public Tagged<Terminal> tag(String tag) {
-            return new Tagged<>(this, tag);
-        }
-
-        @Override
-        public String getSymbol() {
-            return symbolName;
-        }
-
-        @Override
-        public String getTag() {
-            return null;
-        }
-
-        public String getRegex() {
-            return regex;
-        }
-    }
 }

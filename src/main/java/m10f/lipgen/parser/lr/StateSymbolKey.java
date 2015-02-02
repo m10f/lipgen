@@ -1,6 +1,6 @@
 package m10f.lipgen.parser.lr;
 
-import m10f.lipgen.parser.Symbol;
+import m10f.lipgen.grammar.symbol.Symbol;
 
 /**
 * Created by jlamar on 1/21/2015.

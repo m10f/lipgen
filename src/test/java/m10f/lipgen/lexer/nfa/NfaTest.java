@@ -9,8 +9,7 @@ public class NfaTest {
     @Test
     public void testBasic() {
         // (a*b)|cc
-        Nfa nfa = new Nfa('a')
-                .closure()
+        Nfa nfa = new Nfa('a').closure()
                 .concat(new Nfa('b'))
                 .alternate(new Nfa('c').concat(new Nfa('c')));
 

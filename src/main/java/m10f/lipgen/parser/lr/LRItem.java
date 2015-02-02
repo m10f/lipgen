@@ -1,8 +1,7 @@
 package m10f.lipgen.parser.lr;
 
-import m10f.lipgen.parser.Symbol;
-import m10f.lipgen.parser.GrammarProductionElement;
-import m10f.lipgen.parser.GrammarRule;
+import m10f.lipgen.grammar.symbol.GrammarRule;
+import m10f.lipgen.grammar.symbol.Symbol;
 
 import java.util.Optional;
 
@@ -22,8 +21,8 @@ public class LRItem {
     }
 
     public Optional<Symbol> nextSymbol() {
-        if(parseLocation < rule.getProduction().size())
-            return Optional.of(rule.getProduction().get(parseLocation).getSymbol());
+        if(parseLocation < rule.getProduction().getElements().size())
+            return Optional.of(rule.getProduction().getElements().get(parseLocation));
         else
             return Optional.empty();
     }
@@ -37,7 +36,7 @@ public class LRItem {
     }
 
     public LRItem nextParseLocation() {
-        if(parseLocation >= rule.getProduction().size())
+        if(parseLocation >= rule.getProduction().getElements().size())
             throw new IllegalArgumentException();
         return new LRItem(rule, parseLocation + 1, lookahead);
 
@@ -67,14 +66,14 @@ public class LRItem {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append(rule.getNonterminalSymbol().getName());
+        sb.append(rule.getNonterminal().getName());
         sb.append(" -> ");
         int i = 0;
-        for(GrammarProductionElement gpe : rule.getProduction()) {
+        for(Symbol symbol : rule.getProduction().getElements()) {
             if(i++ == parseLocation)
                 sb.append(" . ");
             sb.append(" ");
-            sb.append(gpe.getSymbol().getName());
+            sb.append(symbol.getName());
             sb.append(" ");
         }
         if(!nextSymbol().isPresent())

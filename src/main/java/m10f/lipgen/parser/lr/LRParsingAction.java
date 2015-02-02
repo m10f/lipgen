@@ -1,6 +1,6 @@
 package m10f.lipgen.parser.lr;
 
-import m10f.lipgen.parser.GrammarRule;
+import m10f.lipgen.grammar.symbol.GrammarRule;
 
 public class LRParsingAction {
     private Type type;

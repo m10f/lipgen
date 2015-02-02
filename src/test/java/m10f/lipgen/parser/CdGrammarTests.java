@@ -1,5 +1,10 @@
 package m10f.lipgen.parser;
 
+import m10f.lipgen.grammar.Grammar;
+import m10f.lipgen.grammar.symbol.GrammarRule;
+import m10f.lipgen.grammar.symbol.Nonterminal;
+import m10f.lipgen.grammar.symbol.Symbol;
+import m10f.lipgen.grammar.symbol.Terminal;
 import m10f.lipgen.lexer.LexerStream;
 import m10f.lipgen.lexer.LexicalAnalyzer;
 import m10f.lipgen.lexer.TokenIterator;
@@ -18,10 +23,13 @@ import static org.junit.Assert.*;
 // S -> CC
 // C -> cC | d
 public class CdGrammarTests {
-    Symbol S = new Symbol("S");
-    Symbol C = new Symbol("C");
-    Symbol c = new Symbol("c");
-    Symbol d = new Symbol("d");
+    Grammar grammar = new Grammar();
+
+    Terminal c = grammar.terminal("c", "c");
+    Terminal d = grammar.terminal("d", "d");
+    Nonterminal S = grammar.nonterminal("S");
+    Nonterminal C = grammar.nonterminal("C");
+
 
     GrammarRule SCC;
     GrammarRule CcC;
@@ -31,34 +39,23 @@ public class CdGrammarTests {
     LRParserGenerator generator;
 
     LRParserGenerator makeGenerator() {
-        return new LRParserGenerator(rules, startSymbol);
-    }
-
-    private GrammarRule makeRule(Symbol nt, Symbol... symbols) {
-        ArrayList<GrammarProductionElement> gpes = new ArrayList<>();
-        for(Symbol s : symbols)
-            gpes.add(new GrammarProductionElement(s));
-
-        return new GrammarRule(nt, gpes);
+        return new LRParserGenerator(grammar);
     }
 
     @Before
     public void setup() {
-        SCC = makeRule(S, C, C);
-        CcC = makeRule(C, c, C);
-        Cd = makeRule(C, d);
-        rules = new ArrayList<>();
-        rules.add(SCC);
-        rules.add(CcC);
-        rules.add(Cd);
-        startSymbol = S;
+        grammar.setStartSymbol(S);
+        SCC = S.addRule("CC", C, C);
+        CcC = C.addRule("cC", c, C);
+        Cd = C.addRule("d", d);
         generator = makeGenerator();
     }
     
     
     @Test
     public void testFirst() {
-        Set<Symbol> symbols = generator.first(new LRItem(SCC, 1, generator.getEndSymbol()));
+        LRItem item = new LRItem(SCC, 1, generator.getEndSymbol());
+        Set<Symbol> symbols = generator.first(item);
 
         assertEquals(2, symbols.size());
         assertTrue(symbols.contains(c));
@@ -112,7 +109,7 @@ public class CdGrammarTests {
 
     // transcribed from the dragon book
     public LRParsingTable buildCdTable() {
-        Symbol endSymbol = new Symbol("!END", true);
+        Symbol endSymbol = new Terminal("!END");
 
         LRParsingTable table = new LRParsingTable();
         table.setInitialState(0);
@@ -164,9 +161,7 @@ public class CdGrammarTests {
     }
 
     public void ddTest(LRParsingTable table) throws Exception {
-        LexicalAnalyzer lexer = new LexicalAnalyzer();
-        lexer.addRule(c.getName(), new Nfa('c'));
-        lexer.addRule(d.getName(), new Nfa('d'));
+        LexicalAnalyzer lexer = grammar.getLexer();
 
         LRParser parser = new LRParser(table);
         LexerStream stream = new LexerStream("dd");

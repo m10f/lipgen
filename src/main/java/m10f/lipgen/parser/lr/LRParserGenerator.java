@@ -1,8 +1,7 @@
 package m10f.lipgen.parser.lr;
 
-import m10f.lipgen.parser.Symbol;
-import m10f.lipgen.parser.GrammarProductionElement;
-import m10f.lipgen.parser.GrammarRule;
+import m10f.lipgen.grammar.Grammar;
+import m10f.lipgen.grammar.symbol.*;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -15,33 +14,35 @@ public class LRParserGenerator {
 
     private Map<Symbol, List<GrammarRule>> productionIndex;
 
-    public GrammarRule getAugmentedStartRule() {
-        return augmentedStartRule;
-    }
+    public LRParserGenerator(Grammar grammar) {
+        this.rules = new ArrayList<>(grammar.getRules());
+        this.startSymbol = grammar.getStartSymbol();
 
-    public Symbol getEndSymbol() {
-        return endSymbol;
-    }
-
-    public LRParserGenerator(List<GrammarRule> inputRules, Symbol startSymbol) {
-        this.rules = new ArrayList<>(inputRules);
-        this.startSymbol = startSymbol;
-        Symbol augmentedStartSymbol = new Symbol("!AUGMENTED_START", true);
-        endSymbol = new Symbol("!AUGMENTED_END", true);
+        // TODO: better infrastructure for surrogate symbols?
+        Nonterminal augmentedStartSymbol = new Nonterminal("!START");
+        endSymbol = new Terminal("!END");
 
         // augment grammar
-        List<GrammarProductionElement> augmentedStartProduction = new ArrayList<>();
-        augmentedStartProduction.add(new GrammarProductionElement(startSymbol));
-        augmentedStartRule = new GrammarRule(augmentedStartSymbol, augmentedStartProduction);
+        List<Symbol> augmentedStartProduction = new ArrayList<>();
+        augmentedStartProduction.add(startSymbol);
+        augmentedStartRule = new GrammarRule(augmentedStartSymbol, new Production("!START PRODUCTION", augmentedStartProduction));
         this.rules.add(augmentedStartRule);
 
         // Build indexing structures
         productionIndex = new HashMap<>();
         for(GrammarRule rule : rules) {
             productionIndex
-                    .computeIfAbsent(rule.getNonterminalSymbol(), (k) -> new ArrayList<>())
+                    .computeIfAbsent(rule.getNonterminal(), (k) -> new ArrayList<>())
                     .add(rule);
         }
+    }
+
+    public GrammarRule getAugmentedStartRule() {
+        return augmentedStartRule;
+    }
+
+    public Symbol getEndSymbol() {
+        return endSymbol;
     }
 
     private boolean isNonterminal(Symbol symbol) {
