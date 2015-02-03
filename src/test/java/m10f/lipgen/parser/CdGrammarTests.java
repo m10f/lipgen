@@ -95,7 +95,7 @@ public class CdGrammarTests {
     }
 
     @Test
-    public void testParseTableGenerationTotals() {
+    public void testParseTableGenerationTotals() throws Exception {
         LRParsingTable table = generator.generateParsingTable();
         long actionStateCount = table.getActionTable().keySet().stream().map(m -> m.getState()).distinct().count();
 
@@ -103,8 +103,6 @@ public class CdGrammarTests {
         Assert.assertEquals(generator.computeItemSets().size(), actionStateCount);
         Assert.assertEquals(16, table.getActionTable().size());
         Assert.assertEquals(5, table.getGotoTable().size());
-
-        // TODO: broader tests (possibly expose to the package the set->state mapping for unit testing purposes)
     }
 
     // transcribed from the dragon book

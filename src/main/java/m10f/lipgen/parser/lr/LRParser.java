@@ -27,7 +27,7 @@ public class LRParser {
             Optional<LRParsingAction> action = parseTable.getAction(stateStack.peek(), currentToken.getSymbol());
             if(!action.isPresent()) {
                 if (currentToken.getSymbol() != parseTable.getEndSymbol())
-                    throw new SyntaxException("syntax error before " + currentToken.getLexeme()); // TODO: give some more information
+                    throw new SyntaxException("syntax error before " + currentToken.getLexeme()); // TODO: give some more information - also, recovery?
                 else
                     throw new SyntaxException("unexpected end of input");
             }

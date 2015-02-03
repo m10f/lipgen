@@ -7,6 +7,7 @@ import m10f.lipgen.grammar.symbol.Terminal;
 import m10f.lipgen.lexer.LexicalAnalyzer;
 import m10f.lipgen.lexer.nfa.Nfa;
 import m10f.lipgen.lexer.nfa.RegexParser;
+import m10f.lipgen.parser.lr.LRParseTableConflictException;
 import m10f.lipgen.parser.lr.LRParserGenerator;
 import m10f.lipgen.parser.lr.LRParsingTable;
 
@@ -79,7 +80,7 @@ public class Grammar {
         return lexicalAnalyzer;
     }
 
-    public LRParsingTable getLrParseTable() {
+    public LRParsingTable getLrParseTable() throws LRParseTableConflictException {
         LRParserGenerator generator = new LRParserGenerator(this);
         return generator.generateParsingTable();
     }

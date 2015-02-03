@@ -6,6 +6,7 @@ import m10f.lipgen.grammar.symbol.Terminal;
 import m10f.lipgen.lexer.*;
 import m10f.lipgen.parser.ParseTree;
 import m10f.lipgen.parser.SyntaxException;
+import m10f.lipgen.parser.lr.LRParseTableConflictException;
 import m10f.lipgen.parser.lr.LRParser;
 
 
@@ -61,7 +62,12 @@ public class RegexParser {
                 .withRule("group", openGroup, catenationExpression.tag("value"), closedGroup);
 
         lexicalAnalyzer = regexGrammar.getLexer();
-        parser = new LRParser(regexGrammar.getLrParseTable());
+        try {
+            parser = new LRParser(regexGrammar.getLrParseTable());
+        } catch (LRParseTableConflictException ex) {
+            throw new RuntimeException("regex parser generation failed due to grammar conflicts", ex);
+        }
+
     }
 
     public Nfa buildNfa(ParseTree tree) {

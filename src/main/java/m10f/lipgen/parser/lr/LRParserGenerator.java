@@ -13,6 +13,8 @@ public class LRParserGenerator {
     private Symbol endSymbol;
 
     private Map<Symbol, List<GrammarRule>> productionIndex;
+    private Map<Set<LRItem>, Map<Symbol, Set<LRItem>>> gotoMemoization;
+    private Map<LRItem, Set<Symbol>> firstMemoization;
 
     public LRParserGenerator(Grammar grammar) {
         this.rules = new ArrayList<>(grammar.getRules());
@@ -35,6 +37,8 @@ public class LRParserGenerator {
                     .computeIfAbsent(rule.getNonterminal(), (k) -> new ArrayList<>())
                     .add(rule);
         }
+        gotoMemoization = new HashMap<>();
+        firstMemoization = new HashMap<>();
     }
 
     public GrammarRule getAugmentedStartRule() {
@@ -50,6 +54,10 @@ public class LRParserGenerator {
     }
 
     public Set<Symbol> first(LRItem item) {
+        return firstMemoization.computeIfAbsent(item, i -> computeFirst(i));
+    }
+
+    public Set<Symbol> computeFirst(LRItem item) {
         if(!item.nextSymbol().isPresent())
             return Collections.singleton(item.getLookahead());
 
@@ -105,8 +113,12 @@ public class LRParserGenerator {
         }
     }
 
-    // TODO: memoize this result?
     public Set<LRItem> itemSetGoto(Set<LRItem> items, Symbol x) {
+        return gotoMemoization.computeIfAbsent(items, i -> new HashMap<Symbol, Set<LRItem>>())
+                .computeIfAbsent(x, s -> computeItemSetGoto(items, x));
+    }
+
+    public Set<LRItem> computeItemSetGoto(Set<LRItem> items, Symbol x) {
         Set<LRItem> gotoSet = new HashSet<>();
         for(LRItem item : items) {
             if(item.nextSymbol().isPresent() && item.nextSymbol().get().equals(x))
@@ -141,14 +153,17 @@ public class LRParserGenerator {
         }
     }
 
-    public LRParsingTable generateParsingTable() {
+    public LRParsingTable generateParsingTable() throws LRParseTableConflictException {
+        ArrayList<LRParseTableConflict> conflicts = new ArrayList<>();
         Set<Set<LRItem>> items = computeItemSets();
         Map<Set<LRItem>, Long> stateMap = new HashMap<>();
+        Map<Long, Set<LRItem>> stateToItemSetMap = new HashMap<>();
         LRParsingTable table = new LRParsingTable();
         table.setEndSymbol(endSymbol);
 
         long idx = 0;
         for(Set<LRItem> itemSet : items) {
+            stateToItemSetMap.put(idx, itemSet);
             stateMap.put(itemSet, idx++);
         }
 
@@ -178,7 +193,7 @@ public class LRParserGenerator {
                 if(action != null && symbol != null) {
                     Optional<LRParsingAction> existingAction = table.getAction(state, symbol);
                     if (existingAction.isPresent() && !existingAction.get().equals(action)) {
-                        throw new RuntimeException(); // TODO: collect these errors and throw a detailed error at the end
+                        conflicts.add(new LRParseTableConflict(state, symbol, existingAction.get(), action));
                     } else {
                         table.putAction(stateMap.get(itemSet), symbol, action);
                     }
@@ -190,6 +205,9 @@ public class LRParserGenerator {
                 }
             }
         }
+
+        if(!conflicts.isEmpty())
+            throw new LRParseTableConflictException(conflicts);
         return table;
     }
 }

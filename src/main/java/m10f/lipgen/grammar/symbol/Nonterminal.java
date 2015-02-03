@@ -27,6 +27,7 @@ public class Nonterminal implements Symbol {
         return new Tagged<>(this, tag);
     }
 
+    // TODO: remove productions
     public Nonterminal withRule(String ruleTag, Symbol... symbols) {
         productions.add(new Production(ruleTag, Arrays.asList(symbols)));
         return this;
